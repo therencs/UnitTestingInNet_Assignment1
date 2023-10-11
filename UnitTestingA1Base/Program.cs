@@ -37,26 +37,50 @@ app.MapGet("/recipes/byIngredient", (string? name, int? id) =>
     {
         HashSet<Recipe> recipes = bll.GetRecipesByIngredient(id, name);
         return Results.Ok(recipes);
-    } catch(Exception ex)
+    } catch(KeyNotFoundException ex)
     {
-        return Results.NotFound();
+        return Results.NotFound(ex);
     }
 });
 
 ///<summary>
 /// Returns a HashSet of all Recipes that only contain ingredients that belong to the Dietary Restriction provided by name or Primary Key
 /// </summary>
-app.MapGet("/recipes/byDiet", (string name, int id) =>
+app.MapGet("/recipes/byDiet", (string? name, int? id) =>
 {
-
+    try
+    {
+        HashSet<Recipe> recipes = bll.GetRecipesByDiet(id, name);
+        return Results.Ok(recipes);
+    }
+    catch (Exception ex)
+    {
+        return Results.NotFound(ex);
+    }
 });
 
 ///<summary>
 ///Returns a HashSet of all recipes by either Name or Primary Key. 
 /// </summary>
-app.MapGet("/recipes", (string name, int id) =>
+app.MapGet("/recipes", (string? name, int? id) =>
 {
+    try
+    {   
+        HashSet<Recipe> recipes = bll.GetRecipes(id, name);
 
+        if (recipes.Count > 0)
+        {
+            return Results.Ok(recipes);
+        } else
+        {
+            throw new Exception();
+        }
+        
+
+    } catch (Exception ex)
+    {
+        return Results.NotFound(ex);
+    }
 });
 
 ///<summary>
@@ -72,8 +96,8 @@ app.MapGet("/recipes", (string name, int id) =>
 /// 
 /// All IDs should be created for these objects using the returned value of the AppStorage.GeneratePrimaryKey() method
 /// </summary>
-app.MapPost("/recipes", () => {
-
+app.MapPost("/recipes", (NewRecipeWithIngredients newRecipe) => {
+    bll.TryPostNewRecipe(newRecipe);
 });
 
 ///<summary>
@@ -81,9 +105,19 @@ app.MapPost("/recipes", () => {
 /// If there is only one Recipe using that Ingredient, then the Recipe is also deleted, as well as all associated RecipeIngredients
 /// If there are multiple Recipes using that ingredient, a Forbidden response code should be provided with an appropriate message
 ///</summary>
-app.MapDelete("/ingredients", (int id, string name) =>
-{
+app.MapDelete("/ingredients", (int? id, string? name) =>
+{   
+    Ingredient? ingredientToDelete = appStorage.Ingredients.FirstOrDefault(i => i.Id == id || i.Name == name);
 
+    if (ingredientToDelete == null)
+    {
+        return Results.NotFound();
+    }
+    else
+    {
+        bll.DeleteIngredient(id, name);
+        return Results.NoContent();
+    }
 });
 
 /// <summary>
@@ -92,8 +126,22 @@ app.MapDelete("/ingredients", (int id, string name) =>
 /// </summary>
 app.MapDelete("/recipes", (int id, string name) =>
 {
+    Recipe? recipeToDelete = appStorage.Recipes.FirstOrDefault(r => r.Id == id || r.Name == name);
 
+    if (recipeToDelete == null)
+    {
+        return Results.NotFound();
+    }
+    else
+    {
+        bll.DeleteRecipe(id, name);
+        return Results.NoContent();
+    }
 });
+
+
+
+
 
 #endregion
 
